@@ -2,6 +2,8 @@ package com.devilo.chickchick;
 
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -17,10 +19,11 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 public class ChickChick implements ApplicationListener {
+
 	private OrthographicCamera camera;
     private SpriteBatch batch;
 
-    Texture[] cloudImages = new Texture[2];
+    Texture cloudImage;
 
     LinkedList<Rectangle> cloudRectangles;
 
@@ -52,8 +55,8 @@ public class ChickChick implements ApplicationListener {
 
     private static final String CIRCLE_SPRITESHEET_NAME = "data/8circle_spritesheet.png";
 
-    private static final int CIRCLE_WIDTH = 256;    // 32 * 8
-    private static final int CIRCLE_HEIGHT = 33;
+    private static final int CIRCLE_WIDTH = 192;    // 24 * 8
+    private static final int CIRCLE_HEIGHT = 24;
 
     Animation circleWalkAnimation;
     Texture circleWalkSheet;
@@ -63,17 +66,18 @@ public class ChickChick implements ApplicationListener {
 
     float circleStateTime;
 
-
     /* Circle Events Variables */
 
     LinkedList<CircleLine> circleRectangles;
     long lastCircleSpawnTime;
 
-
     boolean isPlayOn = true;
 
     Rectangle squareRectangle;
 
+
+    /* Music */
+    Sound overlapSound, gameoverSound, passSound;
 
 	@Override
 	public void create() {		
@@ -83,9 +87,13 @@ public class ChickChick implements ApplicationListener {
         camera = new OrthographicCamera(1, h/w);
 		batch = new SpriteBatch();
 
+        /* Load music and sounds */
+        overlapSound = Gdx.audio.newSound(Gdx.files.internal("sound/overlap.wav"));
+        passSound = Gdx.audio.newSound(Gdx.files.internal("sound/pass1.mp3"));
+        gameoverSound = Gdx.audio.newSound(Gdx.files.internal("sound/gameover.wav"));
+
         /* Loading images */
-        cloudImages[0] = new Texture(Gdx.files.internal("data/cloud1_125.png"));
-        cloudImages[1] = new Texture(Gdx.files.internal("data/cloud2_125.png"));
+        cloudImage = new Texture(Gdx.files.internal("data/cloud1100.png"));
 
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 320, 480);
@@ -115,15 +123,11 @@ public class ChickChick implements ApplicationListener {
         squareStateTime = 0f;
 
 
-
         cloudRectangles = new LinkedList<Rectangle>();
-        touchPos = new Vector3();
-
         spawnCloud();
 
-
         circleRectangles = new LinkedList<CircleLine>();
-        spawnCircle();
+
 
         squareRectangle = new Rectangle();
         squareRectangle.x = (320-32)/2;
@@ -131,24 +135,30 @@ public class ChickChick implements ApplicationListener {
         squareRectangle.width = 32;
         squareRectangle.height = 38;
 
+
+        touchPos = new Vector3();
+
+        spawnCircle();
+
+
     }
 
     private void spawnCircle() {
 
-        int circlex1 = MathUtils.random(-32*4, 0);
-        int circlex2 = circlex1 + 256 + 64;
+        int circlex1 = MathUtils.random(-24*4, 0);
+        int circlex2 = circlex1 + 192 + 64;
 
         Rectangle circleRectangle1 = new Rectangle();
         circleRectangle1.x = circlex1;
-        circleRectangle1.y = -33;
-        circleRectangle1.width = 256;
-        circleRectangle1.height = 33;
+        circleRectangle1.y = -24;
+        circleRectangle1.width = 192;
+        circleRectangle1.height = 24;
 
         Rectangle circleRectangle2 = new Rectangle();
         circleRectangle2.x = circlex2;
-        circleRectangle2.y = -33;
-        circleRectangle2.width = 256;
-        circleRectangle2.height = 33;
+        circleRectangle2.y = -24;
+        circleRectangle2.width = 192;
+        circleRectangle2.height = 24;
 
         circleRectangles.add(new CircleLine(circleRectangle1, circleRectangle2));
         lastCircleSpawnTime = TimeUtils.nanoTime();
@@ -156,22 +166,23 @@ public class ChickChick implements ApplicationListener {
 
     private void spawnCloud() {
         Rectangle cloudRectangle = new Rectangle();
-        cloudRectangle.x = MathUtils.random(0, 320 - 125);
-        cloudRectangle.y = -78;
-        cloudRectangle.width = 125;
-        cloudRectangle.height = 78;
+        cloudRectangle.x = MathUtils.random(0, 320 - 100);
+        cloudRectangle.y = -50;
+        cloudRectangle.width = 100;
+        cloudRectangle.height = 50;
         cloudRectangles.add(cloudRectangle);
         lastCloudSpawnTime = TimeUtils.nanoTime();
+
     }
 
     @Override
 	public void dispose() {
         /* Something to dispose goes here */
 
-        for( int i = 0 ; i < cloudImages.length ; i++ ) {
-            cloudImages[i].dispose();
-        }
-
+        overlapSound.dispose();
+        passSound.dispose();
+        gameoverSound.dispose();
+        cloudImage.dispose();
         batch.dispose();
 	}
 
@@ -182,8 +193,8 @@ public class ChickChick implements ApplicationListener {
             return;
         }
 
-		//Gdx.gl.glClearColor(0.509f, 0.7921f , 1, 1);
-        Gdx.gl.glClearColor(0.62745f, 0.81176f , 0.92549f, 1);
+		//Gdx.gl.glClearColor(0.3f, 0.3f , 0.3f, 1);
+        Gdx.gl.glClearColor(0.52745f, 0.71176f , 0.82549f, 1);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         camera.update();
@@ -198,7 +209,7 @@ public class ChickChick implements ApplicationListener {
 
             /* render the clouds */
             for(Rectangle cloudRectangle: cloudRectangles) {
-                batch.draw(cloudImages[0], cloudRectangle.x, cloudRectangle.y);
+                batch.draw(cloudImage, cloudRectangle.x, cloudRectangle.y);
             }
 
             for(CircleLine circleLineRectangle: circleRectangles) {
@@ -212,7 +223,7 @@ public class ChickChick implements ApplicationListener {
 
         CircleLine activeCircleLine = circleRectangles.peekFirst();
 
-        if( activeCircleLine.getLeft().y >= (squareRectangle.y) ) {
+        if( activeCircleLine.getLeft().y >= (squareRectangle.y - 38) ) {
             if( cloudRectangles.size() > 1 ) {
                 activeCircleLine = circleRectangles.get(1);
             }
@@ -242,9 +253,9 @@ public class ChickChick implements ApplicationListener {
                 else {
                     if (cloudRectangles.size() > 0) {
                         newX = oldX + (currentTouchX - touchX);
-                        if( newX >= -256 && newX <= (320-64-256) ) {
+                        if( newX >= -(24*4) && newX <= (320-64-192) ) {
                             activeCircleLine.getLeft().x = newX;
-                            activeCircleLine.getRight().x = newX + 256 + 64;
+                            activeCircleLine.getRight().x = newX + 192 + 64;
                         }
 
                     }
@@ -265,8 +276,8 @@ public class ChickChick implements ApplicationListener {
             circleRectangles.poll();
         }
 
-        if(TimeUtils.nanoTime() - lastCloudSpawnTime > 2000000000) spawnCloud();
-        if(TimeUtils.nanoTime() - lastCircleSpawnTime > 3500000000L) spawnCircle();
+        if(TimeUtils.nanoTime() - lastCloudSpawnTime > 2500000000L) spawnCloud();
+        if(TimeUtils.nanoTime() - lastCircleSpawnTime > 3800000000L) spawnCircle();
 
         /* Change the coords of clouds */
         Iterator<Rectangle> rectangleIterator = cloudRectangles.iterator();
@@ -274,30 +285,36 @@ public class ChickChick implements ApplicationListener {
 
             Rectangle cloudRectangle = rectangleIterator.next();
 
-            cloudRectangle.y += 150 * Gdx.graphics.getDeltaTime();
+            cloudRectangle.y += 100 * Gdx.graphics.getDeltaTime();
 
-            if(cloudRectangle.y + 78 < 0)
+            if(cloudRectangle.y + 50 < 0)
                 rectangleIterator.remove();
         }
 
 
         /* Co-ords of circle */
         Iterator<CircleLine> circleLineIterator = circleRectangles.iterator();
-        System.out.println("-----------------------------------------------");
+
         while(circleLineIterator.hasNext()) {
 
             CircleLine circleLine = circleLineIterator.next();
 
             if( circleLine.getLeft().overlaps(squareRectangle) || circleLine.getRight().overlaps(squareRectangle)) {
-                //dropSound.play();
+
+                overlapSound.play();
+                gameoverSound.play();
+
                 isPlayOn = false;
                 break;
+            }
+            else if( circleLine.getLeft().y == squareRectangle.y ) {
+                passSound.play();
             }
 
             circleLine.getLeft().y += 50 * Gdx.graphics.getDeltaTime();
             circleLine.getRight().y = circleLine.getLeft().y;
 
-            if(circleLine.getLeft().y + 33 < 0)
+            if(circleLine.getLeft().y + 24 < 0)
                 circleLineIterator.remove();
 
         }
