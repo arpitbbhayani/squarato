@@ -77,7 +77,8 @@ public class ChickChick implements ApplicationListener {
 
 
     /* Music */
-    Sound overlapSound, gameoverSound, passSound;
+    Sound overlapSound;
+    Music chompSound;
 
 	@Override
 	public void create() {		
@@ -88,9 +89,10 @@ public class ChickChick implements ApplicationListener {
 		batch = new SpriteBatch();
 
         /* Load music and sounds */
-        overlapSound = Gdx.audio.newSound(Gdx.files.internal("sound/overlap.wav"));
-        passSound = Gdx.audio.newSound(Gdx.files.internal("sound/pass1.mp3"));
-        gameoverSound = Gdx.audio.newSound(Gdx.files.internal("sound/gameover.wav"));
+        overlapSound = Gdx.audio.newSound(Gdx.files.internal("sound/pacman_death.mp3"));
+        chompSound = Gdx.audio.newMusic(Gdx.files.internal("sound/pacman_eatfruit.mp3"));
+        //passSound = Gdx.audio.newSound(Gdx.files.internal("sound/pass1.mp3"));
+        //gameoverSound = Gdx.audio.newSound(Gdx.files.internal("sound/gameover.wav"));
 
         /* Loading images */
         cloudImage = new Texture(Gdx.files.internal("data/cloud1100.png"));
@@ -140,6 +142,9 @@ public class ChickChick implements ApplicationListener {
 
         spawnCircle();
 
+        chompSound.play();
+        chompSound.setLooping(true);
+
 
     }
 
@@ -179,9 +184,8 @@ public class ChickChick implements ApplicationListener {
 	public void dispose() {
         /* Something to dispose goes here */
 
+        chompSound.dispose();
         overlapSound.dispose();
-        passSound.dispose();
-        gameoverSound.dispose();
         cloudImage.dispose();
         batch.dispose();
 	}
@@ -301,14 +305,11 @@ public class ChickChick implements ApplicationListener {
 
             if( circleLine.getLeft().overlaps(squareRectangle) || circleLine.getRight().overlaps(squareRectangle)) {
 
+                chompSound.stop();
                 overlapSound.play();
-                gameoverSound.play();
 
                 isPlayOn = false;
                 break;
-            }
-            else if( circleLine.getLeft().y == squareRectangle.y ) {
-                passSound.play();
             }
 
             circleLine.getLeft().y += 50 * Gdx.graphics.getDeltaTime();
